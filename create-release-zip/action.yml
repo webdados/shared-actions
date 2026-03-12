@@ -1,0 +1,29 @@
+name: Create Release Zip
+description: Create a zip file for the GitHub release and for eventual upload to a server
+
+inputs:
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 📦 Zip Release
+      shell: bash
+      run: |
+        STAGING_DIR="${{ env.SLUG }}"
+        TEMP_DIR=$(mktemp -d)
+        ZIP_PATH="${GITHUB_WORKSPACE:-$PWD}/${{ env.SLUG }}.zip"
+
+        echo "Creating staging directory: $TEMP_DIR/$STAGING_DIR"
+        rm -f "$ZIP_PATH"
+        mkdir -p "$TEMP_DIR/$STAGING_DIR"
+
+        echo "Copying files while honoring .distignore..."
+        rsync -a --exclude-from=".distignore" --exclude="$STAGING_DIR/" ./ "$TEMP_DIR/$STAGING_DIR/"
+
+        echo "Creating zip with top-level folder: $STAGING_DIR"
+        (
+          cd "$TEMP_DIR"
+          zip -r "$ZIP_PATH" "$STAGING_DIR"
+        )
+
+        rm -rf "$TEMP_DIR"
