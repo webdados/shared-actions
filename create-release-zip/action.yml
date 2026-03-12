@@ -1,15 +1,24 @@
 name: Create Release Zip
 description: Create a zip file for the GitHub release and for eventual upload to a server
 
+inputs:
+  plugin-slug:
+    description: 'The slug of the plugin - Main folder name inside the zip file'
+    default: ''
+  zip-filename:
+    description: 'The name of the zip file to create'
+    default: ''
+
 runs:
   using: 'composite'
   steps:
     - name: 📦 Zip Release
       shell: bash
       run: |
-        STAGING_DIR="${{ env.SLUG }}"
+        STAGING_DIR="${{ inputs.plugin-slug }:-$SLUG}"
+        ZIP_NAME="${{ inputs.zip-filename }:-$SLUG}"
         TEMP_DIR=$(mktemp -d)
-        ZIP_PATH="${GITHUB_WORKSPACE:-$PWD}/${{ env.SLUG }}.zip"
+        ZIP_PATH="${GITHUB_WORKSPACE:-$PWD}/$ZIP_NAME.zip"
 
         echo "Creating staging directory: $TEMP_DIR/$STAGING_DIR"
         rm -f "$ZIP_PATH"

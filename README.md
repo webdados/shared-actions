@@ -37,4 +37,7 @@ jobs:
     # Create the zip file excluding files and directories listed in .distignore
     - name: 📦 Zip Release
       uses: webdados/shared-actions/create-release-zip@main
+      with:
+        plugin-slug: folder-name-inside-zip # Optional - Defaults to env.SLUG
+        zip-filename: zip-filename # Optional (without ".zip") - Defaults to env.SLUG
 ```
