@@ -15,8 +15,10 @@ runs:
     - name: 📦 Zip Release
       shell: bash
       run: |
-        STAGING_DIR="${{ inputs.plugin-slug }:-$SLUG}"
-        ZIP_NAME="${{ inputs.zip-filename }:-$SLUG}"
+        INPUT_SLUG="${{ inputs.plugin-slug }}"
+        INPUT_ZIP="${{ inputs.zip-filename }}"
+        STAGING_DIR="${INPUT_SLUG:-$SLUG}"
+        ZIP_NAME="${INPUT_ZIP:-$SLUG}"
         TEMP_DIR=$(mktemp -d)
         ZIP_PATH="${GITHUB_WORKSPACE:-$PWD}/$ZIP_NAME.zip"
 
