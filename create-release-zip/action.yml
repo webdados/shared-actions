@@ -1,8 +1,6 @@
 name: Create Release Zip
 description: Create a zip file for the GitHub release and for eventual upload to a server
 
-inputs:
-
 runs:
   using: 'composite'
   steps:
