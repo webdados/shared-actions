@@ -2,11 +2,13 @@
 
 Shared GitHub Actions to use on several projects by Webdados / Naked Cat Plugins
 
+
+
 ## Create Release Zip
 
 Create a zip file for the GitHub release and for eventual upload to a server.
 
-Usage:
+### Usage:
 
 ```yaml
 name: Build release zip when pushing tag
