@@ -2,6 +2,8 @@
 
 Shared GitHub Actions to use on several projects by Webdados / Naked Cat Plugins
 
+Altought this repository is public (because of GitHub limitations), the usage of these actions by 3rd party projects is not recommended.
+
 
 
 ## Create Release Zip
@@ -9,6 +11,9 @@ Shared GitHub Actions to use on several projects by Webdados / Naked Cat Plugins
 Create a zip file for the GitHub release and for eventual upload to a server.
 
 ### Usage:
+
+Assumes a `.distignore` file exists containig the files and folders to exclude.
+If `env.SLUG` is set, `plugin-slug` and `zip-filename` are not required and will default to that (most of the cases).
 
 ```yaml
 name: Build release zip when pushing tag
