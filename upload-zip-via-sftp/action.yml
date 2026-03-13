@@ -1,0 +1,40 @@
+name: Upload ZIP via SFTP
+description: Upload a zip file to a server via SFTP
+
+inputs:
+  sftp-host:
+    description: 'The SFTP host to upload the zip file to'
+    required: true
+  sftp-port:
+    description: 'The SFTP port to connect to'
+    default: 22
+  sftp-username:
+    description: 'The SFTP username'
+    required: true
+  sftp-password:
+    description: 'The SFTP password'
+    required: true
+  sftp-path:
+    description: 'The path on the SFTP server to upload the zip file to'
+    required: true
+  zip-filename:
+    description: 'The name of the zip file to upload (without the .zip extension) - Needs to exist on the root folder of the action running'
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🆙 Upload to server via SFTP command
+      shell: bash
+      run: |
+        INPUT_ZIP="${{ inputs.zip-filename }}"
+        ZIP_NAME="${INPUT_ZIP:-$SLUG}"
+        sudo apt-get update
+        sudo apt-get install -y sshpass
+        echo "Uploading file..."
+        sshpass -p "${{ inputs.sftp-password }}" sftp -P ${{ inputs.sftp-port }} -o StrictHostKeyChecking=no ${{ inputs.sftp-username }}@${{ inputs.sftp-host }} << EOF
+        cd ${{ inputs.sftp-path }}
+        put "$ZIP_NAME.zip"
+        ls -la
+        quit
+        EOF

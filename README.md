@@ -1,8 +1,8 @@
 # Webdados / Naked Cat Plugins shared GitHub actions
 
-Shared GitHub Actions to use on several projects by Webdados / Naked Cat Plugins
+Shared GitHub Actions to use on several WordPress Free and Premium Plugins by Webdados / Naked Cat Plugins.
 
-Altought this repository is public (because of GitHub limitations), the usage of these actions by 3rd party projects is not recommended.
+Although this repository is public (due to GitHub limitations), using these actions in 3rd-party projects is not recommended.
 
 
 
@@ -12,8 +12,8 @@ Create a zip file for the GitHub release and for eventual upload to a server.
 
 ### Usage:
 
-Assumes a `.distignore` file exists containig the files and folders to exclude.
-If `env.SLUG` is set, `plugin-slug` and `zip-filename` are not required and will default to that (most of the cases).
+Assumes a `.distignore` file exists containing the files and folders to exclude.
+If `env.SLUG` is set (which is recommended, as it's shared by several of our actions), `plugin-slug` and `zip-filename` are not required and will default to it (which should apply in most cases: the folder name and the main file are the same).
 
 ```yaml
 name: Build release zip when pushing tag
