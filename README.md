@@ -42,7 +42,231 @@ jobs:
     # Create the zip file excluding files and directories listed in .distignore
     - name: 📦 Zip Release
       uses: webdados/shared-actions/create-release-zip@main
+      # with:
+        # plugin-slug: folder-name-inside-zip # Optional - Defaults to env.SLUG
+        # zip-filename: zip-filename # Optional (without ".zip") - Defaults to env.SLUG
+    
+    # Create release and upload the zip file as an asset using https://github.com/marketplace/actions/gh-release
+    - name: 🚀 Publish Release
+      uses: softprops/action-gh-release@v2.5.0
       with:
-        plugin-slug: folder-name-inside-zip # Optional - Defaults to env.SLUG
-        zip-filename: zip-filename # Optional (without ".zip") - Defaults to env.SLUG
+        tag_name:   ${{ github.ref_name }}
+        name:       ${{ github.ref_name }}
+        draft:      false
+        prerelease: false
+        files:      ${{ env.SLUG }}.zip
+```
+
+
+
+## Upload ZIP via SFTP
+
+Upload a zip file to a server via SFTP
+
+### Usage:
+
+```yaml
+name: Build release zip when pushing tag, and upload it to SFTP
+
+on:
+  push:
+    tags:
+    - '*'
+
+permissions:
+  contents: write  # needed to create releases and upload assets
+
+env:
+  SLUG: the-plugin-slug
+
+jobs:
+  build:
+    name: Build release zip
+    runs-on: ubuntu-latest
+    steps:
+    
+    # Checkout the code from the repository
+    - name: ⬇️ Checkout
+      uses: actions/checkout@v4
+    
+    # Create the zip file excluding files and directories listed in .distignore
+    - name: 📦 Zip Release
+      uses: webdados/shared-actions/create-release-zip@main
+      # with:
+        # plugin-slug: folder-name-inside-zip # Optional - Defaults to env.SLUG
+        # zip-filename: zip-filename # Optional (without ".zip") - Defaults to env.SLUG
+    
+    # Create release and upload the zip file as an asset using https://github.com/marketplace/actions/gh-release
+    - name: 🚀 Publish Release
+      uses: softprops/action-gh-release@v2.5.0
+      with:
+        tag_name:   ${{ github.ref_name }}
+        name:       ${{ github.ref_name }}
+        draft:      false
+        prerelease: false
+        files:      ${{ env.SLUG }}.zip
+
+    # Upload using basic SFTP command
+    - name: 🆙 Upload to server via SFTP command
+      uses: webdados/shared-actions/upload-zip-via-sftp@main
+      with:
+        sftp-host:     ${{ vars.FTP_HOST }}
+        sftp-port:     ${{ vars.FTP_PORT }}
+        sftp-username: ${{ secrets.FTP_USERNAME }}
+        sftp-password: ${{ secrets.FTP_PASSWORD }}
+        sftp-path:     /the_plugins_folder_on_the_server/
+```
+
+
+
+## Update Woo Software License Meta
+
+Update WooCommerce "WP Software License " product meta data - version, last updates, version required, and tested up to
+
+### Usage:
+
+```yaml
+name: Build release zip when pushing tag, upload it to SFTP, and update Woo product(s) version and other meta
+
+on:
+  push:
+    tags:
+    - '*'
+
+permissions:
+  contents: write  # needed to create releases and upload assets
+
+env:
+  SLUG: the-plugin-slug
+
+jobs:
+  build:
+    name: Build release zip
+    runs-on: ubuntu-latest
+    steps:
+    
+    # Checkout the code from the repository
+    - name: ⬇️ Checkout
+      uses: actions/checkout@v4
+    
+    # Create the zip file excluding files and directories listed in .distignore
+    - name: 📦 Zip Release
+      uses: webdados/shared-actions/create-release-zip@main
+      # with:
+        # plugin-slug: folder-name-inside-zip # Optional - Defaults to env.SLUG
+        # zip-filename: zip-filename # Optional (without ".zip") - Defaults to env.SLUG
+    
+    # Create release and upload the zip file as an asset using https://github.com/marketplace/actions/gh-release
+    - name: 🚀 Publish Release
+      uses: softprops/action-gh-release@v2.5.0
+      with:
+        tag_name:   ${{ github.ref_name }}
+        name:       ${{ github.ref_name }}
+        draft:      false
+        prerelease: false
+        files:      ${{ env.SLUG }}.zip
+
+    # Upload using basic SFTP command
+    - name: 🆙 Upload to server via SFTP command
+      uses: webdados/shared-actions/upload-zip-via-sftp@main
+      with:
+        sftp-host:     ${{ vars.FTP_HOST }}
+        sftp-port:     ${{ vars.FTP_PORT }}
+        sftp-username: ${{ secrets.FTP_USERNAME }}
+        sftp-password: ${{ secrets.FTP_PASSWORD }}
+        sftp-path:     /the_plugins_folder_on_the_server/
+
+    # Update WooCommerce "WP Software License" product meta data
+    - name: 📝 Update WooCommerce Products
+      uses: webdados/shared-actions/update-woo-software-license-meta@main
+      with:
+        # plugin-slug:          ${{ env.SLUG }} - Defaults to env.SLUG
+        # plugin-version:       ${{ github.ref_name }} - Defaults to github.ref_name
+        plugin-product-ids:   ${{ vars.WOOCOMMERCE_PRODUCT_IDS }}
+        woo-consumer-key:     ${{ secrets.WOOCOMMERCE_CONSUMER_KEY }}
+        woo-consumer-secret:  ${{ secrets.WOOCOMMERCE_CONSUMER_SECRET }}
+        woo-store-url:        https://thewebsite.com
+```
+
+
+
+## Update WP Changelog page
+
+Convert CHANGELOG.md to HTML and update WordPress page content with it
+
+### Usage:
+
+```yaml
+name: Build release zip when pushing tag, upload it to SFTP, update Woo product(s) version and other meta, and update WordPress Changelog page
+
+on:
+  push:
+    tags:
+    - '*'
+
+permissions:
+  contents: write  # needed to create releases and upload assets
+
+env:
+  SLUG: the-plugin-slug
+
+jobs:
+  build:
+    name: Build release zip
+    runs-on: ubuntu-latest
+    steps:
+    
+    # Checkout the code from the repository
+    - name: ⬇️ Checkout
+      uses: actions/checkout@v4
+    
+    # Create the zip file excluding files and directories listed in .distignore
+    - name: 📦 Zip Release
+      uses: webdados/shared-actions/create-release-zip@main
+      # with:
+        # plugin-slug: folder-name-inside-zip # Optional - Defaults to env.SLUG
+        # zip-filename: zip-filename # Optional (without ".zip") - Defaults to env.SLUG
+    
+    # Create release and upload the zip file as an asset using https://github.com/marketplace/actions/gh-release
+    - name: 🚀 Publish Release
+      uses: softprops/action-gh-release@v2.5.0
+      with:
+        tag_name:   ${{ github.ref_name }}
+        name:       ${{ github.ref_name }}
+        draft:      false
+        prerelease: false
+        files:      ${{ env.SLUG }}.zip
+
+    # Upload using basic SFTP command
+    - name: 🆙 Upload to server via SFTP command
+      uses: webdados/shared-actions/upload-zip-via-sftp@main
+      with:
+        sftp-host:     ${{ vars.FTP_HOST }}
+        sftp-port:     ${{ vars.FTP_PORT }}
+        sftp-username: ${{ secrets.FTP_USERNAME }}
+        sftp-password: ${{ secrets.FTP_PASSWORD }}
+        sftp-path:     /the_plugins_folder_on_the_server/
+
+    # Update WooCommerce "WP Software License" product meta data
+    - name: 📝 Update WooCommerce Products
+      uses: webdados/shared-actions/update-woo-software-license-meta@main
+      with:
+        # plugin-slug:          ${{ env.SLUG }} - Defaults to env.SLUG
+        # plugin-version:       ${{ github.ref_name }} - Defaults to github.ref_name
+        plugin-product-ids:   ${{ vars.WOOCOMMERCE_PRODUCT_IDS }}
+        woo-consumer-key:     ${{ secrets.WOOCOMMERCE_CONSUMER_KEY }}
+        woo-consumer-secret:  ${{ secrets.WOOCOMMERCE_CONSUMER_SECRET }}
+        woo-store-url:        https://thewebsite.com
+
+    # Convert CHANGELOG.md to HTML and update WordPress page
+    - name: 📄 Update Changelog Page
+      uses: webdados/shared-actions/update-wp-changelog-page@main
+      with:
+        # changelog-file:     CHANGELOG.md - Defaults to CHANGELOG.md
+        changelog-page-id:  ${{ vars.WOOCOMMERCE_CHANGELOG_PAGE_ID }}
+        plugin-name:        ${{ vars.WOOCOMMERCE_PRODUCT_NAME }}
+        plugin-url:         ${{ vars.WOOCOMMERCE_PRODUCT_URL }}
+        wordpress-user:     ${{ secrets.WORDPRESS_USER }}
+        wordpress-password: ${{ secrets.WORDPRESS_PASSWORD }}
+        woo-store-url:      https://thewebsite.com
 ```
