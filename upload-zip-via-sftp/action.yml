@@ -18,7 +18,7 @@ inputs:
     description: 'The path on the SFTP server to upload the zip file to'
     required: true
   zip-filename:
-    description: 'The name of the zip file to upload (without the .zip extension) - Needs to exist on the root folder of the action running'
+    description: 'The name of the zip file to upload (without the .zip extension) - Needs to exist on the root folder of the action running - Defaults to env.SLUG'
     default: ''
 
 runs:

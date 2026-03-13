@@ -3,7 +3,7 @@ description: Create a zip file for the GitHub release and for eventual upload to
 
 inputs:
   plugin-slug:
-    description: 'The slug of the plugin - Main folder name inside the zip file'
+    description: 'The slug of the plugin - Main folder name inside the zip file - Defaults to env.SLUG'
     default: ''
   zip-filename:
     description: 'The name of the zip file to create (without the .zip extension)'

@@ -1,0 +1,90 @@
+name: Update Woo Software License Meta
+description: Update WooCommerce "WP Software License " product meta data: version, last updates, version required, and tested up to
+
+inputs:
+  plugin-slug:
+    description: 'The slug of the plugin - Main plugin filename without the .php extension - Defaults to env.SLUG'
+    default: ''
+  plugin-version:
+    description: 'The version of the plugin to update - Defaults to github.ref_name (the tag name)'
+    default: ''
+  plugin-product-ids:
+    description: 'The WooCommerce Product ID to update the meta data for'
+    required: true
+  woo-consumer-key:
+    description: 'WooCommerce REST API Consumer Key with write permissions'
+    required: true
+  woo-consumer-secret:
+    description: 'WooCommerce REST API Consumer Secret with write permissions'
+    required: true
+  woo-store-url:
+    description: 'The URL of the WooCommerce store (e.g. https://nakedcatplugins.com)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 📝 Update WooCommerce Products
+      shell: bash
+      run: |
+        INPUT_SLUG="${{ inputs.plugin-slug }}"
+        FILENAME="${INPUT_SLUG:-$SLUG}"
+        INPUT_VERSION="${{ inputs.plugin-version }}"
+        REF_NAME="${{ github.ref_name }}"
+        VERSION="${INPUT_VERSION:-$REF_NAME}"
+        CURRENT_DATE=$(date +%Y-%m-%d)
+        CONSUMER_KEY="${{ inputs.woo-consumer-key }}"
+        CONSUMER_SECRET="${{ inputs.woo-consumer-secret }}"
+        
+        # List of product IDs to update (space-separated)
+        PRODUCT_IDS="${{ inputs.plugin-product-ids }}"
+
+        # WP Required and Tested up to versions
+        MAIN_PLUGIN_FILE="$FILENAME.php"
+        REQUIRES_AT_LEAST=$(
+          awk '/^[[:space:]]*\*[[:space:]]*Requires at least:/{
+            sub(/^[^:]*:[[:space:]]*/, "", $0)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+            print; exit
+          }' "$MAIN_PLUGIN_FILE"
+        )
+
+        TESTED_UP_TO=$(
+          awk '/^[[:space:]]*\*[[:space:]]*Tested up to:/{
+            sub(/^[^:]*:[[:space:]]*/, "", $0)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+            print; exit
+          }' "$MAIN_PLUGIN_FILE"
+        )
+        
+        echo "Updating products in WooCommerce with version: $VERSION, date: $CURRENT_DATE, requires at least: $REQUIRES_AT_LEAST, tested up to: $TESTED_UP_TO"
+        
+        for PRODUCT_ID in $PRODUCT_IDS; do
+          echo "Updating product ID: $PRODUCT_ID"
+          
+          curl -X PUT "${{ inputs.woo-store-url }}/wp-json/wc/v3/products/$PRODUCT_ID" \
+            -u "$CONSUMER_KEY:$CONSUMER_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"meta_data\": [
+                {
+                  \"key\": \"_sl_new_version\",
+                  \"value\": \"$VERSION\"
+                },
+                {
+                  \"key\": \"_sl_last_updated\",
+                  \"value\": \"$CURRENT_DATE\"
+                },
+                {
+                  \"key\": \"_sl_version_required\",
+                  \"value\": \"$REQUIRES_AT_LEAST\"
+                },
+                {
+                  \"key\": \"_sl_tested_up_to\",
+                  \"value\": \"$TESTED_UP_TO\"
+                }
+              ]
+            }"
+          
+          echo ""
+        done
