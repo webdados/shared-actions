@@ -224,8 +224,8 @@ jobs:
     - name: 📦 Zip Release
       uses: webdados/shared-actions/create-release-zip@main
       # with:
-        # plugin-slug: folder-name-inside-zip # Optional - Defaults to env.SLUG
-        # zip-filename: zip-filename # Optional (without ".zip") - Defaults to env.SLUG
+        # plugin-slug: folder-name-inside-zip                            # Optional - Defaults to env.SLUG
+        # zip-filename: zip-filename                                     # Optional (without ".zip") - Defaults to env.SLUG
     
     # Create release and upload the zip file as an asset using https://github.com/marketplace/actions/gh-release
     - name: 🚀 Publish Release
@@ -242,7 +242,7 @@ jobs:
       uses: webdados/shared-actions/upload-zip-via-sftp@main
       with:
         sftp-host:     ${{ vars.FTP_HOST }}
-        sftp-port:     ${{ vars.FTP_PORT }}
+        # sftp-port:     ${{ vars.FTP_PORT }}                            # Optional - Defaults to 22
         sftp-username: ${{ secrets.FTP_USERNAME }}
         sftp-password: ${{ secrets.FTP_PASSWORD }}
         sftp-path:     /the_plugins_folder_on_the_server/
@@ -251,8 +251,8 @@ jobs:
     - name: 📝 Update WooCommerce Products
       uses: webdados/shared-actions/update-woo-software-license-meta@main
       with:
-        # plugin-slug:          ${{ env.SLUG }} - Defaults to env.SLUG
-        # plugin-version:       ${{ github.ref_name }} - Defaults to github.ref_name
+        # plugin-slug:          ${{ env.SLUG }}                          # Optional - Defaults to env.SLUG
+        # plugin-version:       ${{ github.ref_name }}                   # Optional - Defaults to github.ref_name
         plugin-product-ids:   ${{ vars.WOOCOMMERCE_PRODUCT_IDS }}
         woo-consumer-key:     ${{ secrets.WOOCOMMERCE_CONSUMER_KEY }}
         woo-consumer-secret:  ${{ secrets.WOOCOMMERCE_CONSUMER_SECRET }}
@@ -262,7 +262,7 @@ jobs:
     - name: 📄 Update Changelog Page
       uses: webdados/shared-actions/update-wp-changelog-page@main
       with:
-        # changelog-file:     CHANGELOG.md - Defaults to CHANGELOG.md
+        # changelog-file:     CHANGELOG.md                               # Optional - Defaults to CHANGELOG.md
         changelog-page-id:  ${{ vars.WOOCOMMERCE_CHANGELOG_PAGE_ID }}
         plugin-name:        ${{ vars.WOOCOMMERCE_PRODUCT_NAME }}
         plugin-url:         ${{ vars.WOOCOMMERCE_PRODUCT_URL }}
