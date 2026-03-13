@@ -1,0 +1,63 @@
+name: Update WP Changelog page
+description: Convert CHANGELOG.md to HTML and update WordPress page content with it
+
+inputs:
+  changelog-page-id:
+    description: 'The WordPress page ID to update with the changelog content'
+    required: true
+  changelog-file:
+    description: 'The path to the CHANGELOG.md file to convert and upload'
+    default: 'CHANGELOG.md'
+  plugin-name:
+    description: 'The name of the plugin to update, for the back to product link'
+    required: true
+  plugin-url:
+    description: 'The public URL of the plugin to update, for the back to product link'
+    required: true
+  wordpress-user:
+    description: 'WordPress REST API user with write permissions'
+    required: true
+  wordpress-password:
+    description: 'WordPress REST API user password with write permissions'
+    required: true
+  woo-store-url:
+    description: 'The URL of the WooCommerce store (e.g. https://nakedcatplugins.com)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 📄 Update Changelog Page
+      shell: bash
+      run: |
+        WORDPRESS_USER="${{ inputs.wordpress-user }}"
+        WORDPRESS_PASSWORD="${{ inputs.wordpress-password }}"
+        PAGE_ID="${{ inputs.changelog-page-id }}"
+        PRODUCT_NAME="${{ inputs.plugin-name }}"
+        PRODUCT_URL="${{ inputs.plugin-url }}"
+        
+        echo "Converting CHANGELOG.md to HTML..."
+        
+        # Install pandoc for markdown conversion
+        sudo apt-get install -y pandoc
+        
+        # Convert markdown to HTML with smart typography
+        pandoc "${{ inputs.changelog-file }}" -f markdown-auto_identifiers -t html --wrap=none -o changelog.html
+
+        # Add back to product link at the top
+        echo "<p class=\"small\"><strong>Back to <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p>" > changelog_with_link.html
+        cat changelog.html >> changelog_with_link.html
+        
+        # Read the HTML content and escape it for JSON
+        HTML_CONTENT=$(cat changelog_with_link.html | jq -Rs .)
+        
+        echo "Updating WordPress page..."
+        
+        curl -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \
+          -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"content\": $HTML_CONTENT
+          }"
+        
+        echo "Changelog page updated successfully"
