@@ -1,5 +1,5 @@
 name: Update Woo Software License Meta
-description: Update WooCommerce "WP Software License " product meta data: version, last updates, version required, and tested up to
+description: Update WooCommerce "WP Software License " product meta data - version, last updates, version required, and tested up to
 
 inputs:
   plugin-slug:
