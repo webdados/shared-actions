@@ -41,8 +41,11 @@ runs:
         # Install pandoc for markdown conversion
         sudo apt-get install -y pandoc
         
+        # Normalize WordPress.org-style headings (= version - date =) to Markdown h4 (#### version - date)
+        sed -E 's/^= (.+) =/#### \1/' "${{ inputs.changelog-file }}" > changelog_preprocessed.md
+        
         # Convert markdown to HTML with smart typography
-        pandoc "${{ inputs.changelog-file }}" -f markdown-auto_identifiers -t html --wrap=none -o changelog.html
+        pandoc changelog_preprocessed.md -f markdown-auto_identifiers -t html --wrap=none -o changelog.html
 
         # Add back to product link at the top
         echo "<p class=\"small\"><strong>Back to <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p>" > changelog_with_link.html

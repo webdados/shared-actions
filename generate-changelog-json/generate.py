@@ -52,21 +52,21 @@ current_version = None
 current_items = []
 
 for line in changelog_raw.splitlines():
-    heading = re.match(r'^####\s+(.+)', line)
+    heading = re.match(r'^(?:####\s+|=\s+)(.+?)(?:\s*=)?$', line)
     if heading:
         if current_version is not None:
             entries.append({'version': current_version, 'items': current_items})
         current_version = heading.group(1).strip()
         current_items = []
         continue
-    item_m = re.match(r'^-\s+\[([^\]]+)\]\s*(.*)', line)
+    item_m = re.match(r'^[-*]\s+\[([^\]]+)\]\s*(.*)', line)
     if item_m and current_version is not None:
         tag = item_m.group(1).strip()
         content_text = item_m.group(2).strip()
         item_type = TYPE_MAP.get(tag.lower(), 'improved')
         current_items.append({'content': content_text, 'type': item_type})
     else:
-        plain_m = re.match(r'^-\s+(.*)', line)
+        plain_m = re.match(r'^[-*]\s+(.*)', line)
         if plain_m and current_version is not None:
             content_text = plain_m.group(1).strip()
             if content_text:
