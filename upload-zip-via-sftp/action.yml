@@ -20,6 +20,12 @@ inputs:
   zip-filename:
     description: 'The name of the zip file to upload (without the .zip extension) - Needs to exist on the root folder of the action running - Defaults to env.SLUG'
     default: ''
+  file-to-upload:
+    description: 'Full filename (with extension) of the file to upload - If set, overrides the zip-filename behaviour entirely'
+    default: ''
+  install-sshpass:
+    description: 'Whether to install sshpass before uploading - Set to false if sshpass is already installed in the current job'
+    default: 'true'
 
 runs:
   using: 'composite'
@@ -29,12 +35,16 @@ runs:
       run: |
         INPUT_ZIP="${{ inputs.zip-filename }}"
         ZIP_NAME="${INPUT_ZIP:-$SLUG}"
-        sudo apt-get update
-        sudo apt-get install -y sshpass
-        echo "Uploading file..."
+        INPUT_FILE="${{ inputs.file-to-upload }}"
+        UPLOAD_FILE="${INPUT_FILE:-$ZIP_NAME.zip}"
+        if [[ "${{ inputs.install-sshpass }}" != "false" ]]; then
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+        fi
+        echo "Uploading file: $UPLOAD_FILE"
         sshpass -p "${{ inputs.sftp-password }}" sftp -P ${{ inputs.sftp-port }} -o StrictHostKeyChecking=no ${{ inputs.sftp-username }}@${{ inputs.sftp-host }} << EOF
         cd ${{ inputs.sftp-path }}
-        put "$ZIP_NAME.zip"
+        put "$UPLOAD_FILE"
         ls -la
         quit
         EOF
