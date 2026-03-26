@@ -59,10 +59,10 @@ for line in changelog_raw.splitlines():
         current_version = heading.group(1).strip()
         current_items = []
         continue
-    item_m = re.match(r'^[-*]\s+\[([^\]]+)\]\s*(.*)', line)
+    item_m = re.match(r'^[-*]\s+(\[([^\]]+)\].*)', line)
     if item_m and current_version is not None:
-        tag = item_m.group(1).strip()
-        content_text = item_m.group(2).strip()
+        tag = item_m.group(2).strip()
+        content_text = item_m.group(1).strip()
         item_type = TYPE_MAP.get(tag.lower(), 'improved')
         current_items.append({'content': content_text, 'type': item_type})
     else:
