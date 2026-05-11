@@ -2,8 +2,8 @@ name: Update Woo Software License Meta
 description: Update WooCommerce "WP Software License " product meta data - version, last updates, version required, and tested up to
 
 inputs:
-  plugin-slug:
-    description: 'The slug of the plugin - Main plugin filename without the .php extension - Defaults to env.SLUG'
+  plugin-filename:
+    description: 'The main file of the plugin - Main plugin filename without the .php extension - Only of the main plugin file is not the same as the slug (folder name)'
     default: ''
   plugin-version:
     description: 'The version of the plugin to update - Defaults to github.ref_name (the tag name)'
@@ -27,8 +27,8 @@ runs:
     - name: 📝 Update WooCommerce Products
       shell: bash
       run: |
-        INPUT_SLUG="${{ inputs.plugin-slug }}"
-        FILENAME="${INPUT_SLUG:-$SLUG}"
+        INPUT_FILENAME="${{ inputs.plugin-filename }}"
+        FILENAME="${INPUT_FILENAME:-$SLUG}"
         INPUT_VERSION="${{ inputs.plugin-version }}"
         REF_NAME="${{ github.ref_name }}"
         VERSION="${INPUT_VERSION:-$REF_NAME}"
