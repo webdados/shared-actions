@@ -41,8 +41,30 @@ runs:
         # Install pandoc for markdown conversion
         sudo apt-get install -y pandoc
 
-        # Convert markdown to HTML
-        pandoc "${{ inputs.documentation-file }}" -f markdown-auto_identifiers -t html --wrap=none -o documentation.html
+        # Extract the hostname from woo-store-url for use in the Lua filter
+        STORE_DOMAIN=$(echo "${{ inputs.woo-store-url }}" | sed -E 's|https?://([^/]+).*|\1|')
+
+        # Write a Lua filter that opens external links (not on STORE_DOMAIN) in a new tab
+        cat > external_links.lua << 'LUAEOF'
+local store_domain = os.getenv("STORE_DOMAIN") or ""
+function Link(el)
+    local url = el.target
+    if not url:match("^https?://") then return el end
+    if store_domain ~= "" and url:match(store_domain:gsub("%.", "%%.")) then return el end
+    el.attributes["target"] = "_blank"
+    el.attributes["rel"]    = "noopener noreferrer"
+    return el
+end
+LUAEOF
+
+        # Convert markdown to HTML, applying the external-links filter
+        STORE_DOMAIN="$STORE_DOMAIN" \
+        pandoc "${{ inputs.documentation-file }}" \
+            -f markdown-auto_identifiers \
+            -t html \
+            --wrap=none \
+            --lua-filter=external_links.lua \
+            -o documentation.html
 
         # Add back to product link and [ez-toc] shortcode at the top
         {
