@@ -44,18 +44,8 @@ runs:
         # Extract the hostname from woo-store-url for use in the Lua filter
         STORE_DOMAIN=$(echo "${{ inputs.woo-store-url }}" | sed -E 's|https?://([^/]+).*|\1|')
 
-        # Write a Lua filter that opens external links (not on STORE_DOMAIN) in a new tab
-        cat > external_links.lua << 'LUAEOF'
-local store_domain = os.getenv("STORE_DOMAIN") or ""
-function Link(el)
-    local url = el.target
-    if not url:match("^https?://") then return el end
-    if store_domain ~= "" and url:match(store_domain:gsub("%.", "%%.")) then return el end
-    el.attributes["target"] = "_blank"
-    el.attributes["rel"]    = "noopener noreferrer"
-    return el
-end
-LUAEOF
+        # Copy the Lua filter from the action directory
+        cp "${{ github.action_path }}/external_links.lua" ./
 
         # Normalize WordPress.org-style headings (= version - date =) to Markdown h4 (#### version - date)
         sed -E 's/^= (.+) =/#### \1/' "${{ inputs.changelog-file }}" > changelog_preprocessed.md
