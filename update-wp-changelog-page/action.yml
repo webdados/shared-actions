@@ -37,15 +37,32 @@ runs:
         PRODUCT_URL="${{ inputs.plugin-url }}"
         
         echo "Converting CHANGELOG.md to HTML..."
-        
+
         # Install pandoc for markdown conversion
         sudo apt-get install -y pandoc
-        
+
+        # Extract the hostname from woo-store-url for use in the Lua filter
+        STORE_DOMAIN=$(echo "${{ inputs.woo-store-url }}" | sed -E 's|https?://([^/]+).*|\1|')
+
+        # Write a Lua filter that opens external links (not on STORE_DOMAIN) in a new tab
+        cat > external_links.lua << 'LUAEOF'
+local store_domain = os.getenv("STORE_DOMAIN") or ""
+function Link(el)
+    local url = el.target
+    if not url:match("^https?://") then return el end
+    if store_domain ~= "" and url:match(store_domain:gsub("%.", "%%.")) then return el end
+    el.attributes["target"] = "_blank"
+    el.attributes["rel"]    = "noopener noreferrer"
+    return el
+end
+LUAEOF
+
         # Normalize WordPress.org-style headings (= version - date =) to Markdown h4 (#### version - date)
         sed -E 's/^= (.+) =/#### \1/' "${{ inputs.changelog-file }}" > changelog_preprocessed.md
-        
-        # Convert markdown to HTML with smart typography
-        pandoc changelog_preprocessed.md -f markdown-auto_identifiers -t html --wrap=none -o changelog.html
+
+        # Convert markdown to HTML with smart typography, applying the external-links filter
+        STORE_DOMAIN="$STORE_DOMAIN" \
+        pandoc changelog_preprocessed.md -f markdown-auto_identifiers -t html --wrap=none --lua-filter=external_links.lua -o changelog.html
 
         # Add back to product link at the top
         echo "<p class=\"small\"><strong>Back to <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p>" > changelog_with_link.html
