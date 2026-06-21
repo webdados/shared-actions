@@ -5,6 +5,14 @@
 
 local store_domain = os.getenv("STORE_DOMAIN") or ""
 
+-- Remove pandoc's auto-calculated column widths so no <colgroup> is emitted.
+function Table(t)
+    for i = 1, #t.colspecs do
+        t.colspecs[i][2] = pandoc.ColWidthDefault
+    end
+    return t
+end
+
 function Link(el)
     local url = el.target
     if not url:match("^https?://") then return el end
