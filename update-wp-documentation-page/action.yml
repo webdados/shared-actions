@@ -1,0 +1,68 @@
+name: Update WP Documentation page
+description: Convert DOCUMENTATION.md to HTML and update WordPress page content with it
+
+inputs:
+  documentation-page-id:
+    description: 'The WordPress page ID to update with the documentation content'
+    required: true
+  documentation-file:
+    description: 'The path to the DOCUMENTATION.md file to convert and upload'
+    default: 'DOCUMENTATION.md'
+  plugin-name:
+    description: 'The name of the plugin to update, for the back to product link'
+    required: true
+  plugin-url:
+    description: 'The public URL of the plugin to update, for the back to product link'
+    required: true
+  wordpress-user:
+    description: 'WordPress REST API user with write permissions'
+    required: true
+  wordpress-password:
+    description: 'WordPress REST API user password with write permissions'
+    required: true
+  woo-store-url:
+    description: 'The URL of the WooCommerce store (e.g. https://nakedcatplugins.com)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 📄 Update Documentation Page
+      shell: bash
+      run: |
+        WORDPRESS_USER="${{ inputs.wordpress-user }}"
+        WORDPRESS_PASSWORD="${{ inputs.wordpress-password }}"
+        PAGE_ID="${{ inputs.documentation-page-id }}"
+        PRODUCT_NAME="${{ inputs.plugin-name }}"
+        PRODUCT_URL="${{ inputs.plugin-url }}"
+
+        echo "Converting DOCUMENTATION.md to HTML..."
+
+        # Install pandoc for markdown conversion
+        sudo apt-get install -y pandoc
+
+        # Convert markdown to HTML
+        pandoc "${{ inputs.documentation-file }}" -f markdown-auto_identifiers -t html --wrap=none -o documentation.html
+
+        # Add back to product link and [ez-toc] shortcode at the top
+        {
+          echo "<p class=\"small\"><strong>Back to <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p>"
+          echo ""
+          echo "[ez-toc]"
+          echo ""
+          cat documentation.html
+        } > documentation_with_header.html
+
+        # Read the HTML content and escape it for JSON
+        HTML_CONTENT=$(cat documentation_with_header.html | jq -Rs .)
+
+        echo "Updating WordPress page..."
+
+        curl -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \
+          -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"content\": $HTML_CONTENT
+          }"
+
+        echo "Documentation page updated successfully"
