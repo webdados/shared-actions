@@ -276,6 +276,45 @@ jobs:
 
 
 
+## Update WP Documentation page
+
+Convert DOCUMENTATION.md to HTML and update WordPress page content with it.
+
+If DOCUMENTATION.md starts with one or more paragraphs before its first `##` heading, that content is treated as an intro: it's rendered above the auto-generated table of contents (`[ez-toc]`) instead of inside the regular content flow, and the WordPress page `excerpt` is set from the last paragraph of that block, as plain text with no HTML or Markdown. This is convenient when the file also opens with a disclaimer/notice paragraph (e.g. a language notice) before the actual description — only the last paragraph is used as the excerpt. If the file starts directly with a heading, there's no intro and the page is built exactly as before (back-link → table of contents → content), with no excerpt sent. The "Back to [plugin]" link is wrapped in a `<nav>` element so it's identified as navigation rather than page content to crawlers, AI agents, and accessibility tools.
+
+Requires `wp/v2/pages` excerpt support to be enabled on the target WordPress install for the excerpt update to take effect.
+
+### Usage:
+
+```yaml
+name: Update documentation page
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: Update documentation page
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: ⬇️ Checkout
+      uses: actions/checkout@v4
+
+    - name: 📄 Update Documentation Page
+      uses: webdados/shared-actions/update-wp-documentation-page@main
+      with:
+        # documentation-file:    DOCUMENTATION.md                        # Optional - Defaults to DOCUMENTATION.md
+        documentation-page-id: ${{ vars.WOOCOMMERCE_DOCUMENTATION_PAGE_ID }}
+        plugin-name:           ${{ vars.WOOCOMMERCE_PRODUCT_NAME }}
+        plugin-url:            ${{ vars.WOOCOMMERCE_PRODUCT_URL }}
+        wordpress-user:        ${{ secrets.WORDPRESS_USER }}
+        wordpress-password:    ${{ secrets.WORDPRESS_PASSWORD }}
+        woo-store-url:         https://thewebsite.com
+```
+
+
+
 ## Generate Changelog JSON
 
 Generate a structured JSON changelog file from `CHANGELOG.md` and the plugin PHP header. Outputs a `{slug}.json` file ready to be uploaded to the server.

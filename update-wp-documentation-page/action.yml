@@ -35,6 +35,7 @@ runs:
         PAGE_ID="${{ inputs.documentation-page-id }}"
         PRODUCT_NAME="${{ inputs.plugin-name }}"
         PRODUCT_URL="${{ inputs.plugin-url }}"
+        DOC_FILE="${{ inputs.documentation-file }}"
 
         echo "Converting DOCUMENTATION.md to HTML..."
 
@@ -47,19 +48,60 @@ runs:
         # Copy the Lua filter from the action directory
         cp "${{ github.action_path }}/external_links.lua" ./
 
-        # Convert markdown to HTML, applying the external-links filter
+        # Detect an intro paragraph: any content before the first Markdown heading.
+        # If the file starts with a heading, there's no intro and behaviour is unchanged.
+        HAS_INTRO="false"
+        FIRST_NONBLANK_LINE=$(grep -m1 -n '[^[:space:]]' "$DOC_FILE" | cut -d: -f2-)
+        HEADING_LINE_NUM=$(grep -n '^#' "$DOC_FILE" | head -1 | cut -d: -f1)
+
+        if [ -n "$HEADING_LINE_NUM" ] && [[ "$FIRST_NONBLANK_LINE" != \#* ]]; then
+          HAS_INTRO="true"
+          HEADING_LINE_NUM_MINUS_1=$((HEADING_LINE_NUM - 1))
+          sed -n "1,${HEADING_LINE_NUM_MINUS_1}p" "$DOC_FILE" > intro.md
+          sed -n "${HEADING_LINE_NUM},\$p" "$DOC_FILE" > content.md
+          CONTENT_FILE="content.md"
+        else
+          CONTENT_FILE="$DOC_FILE"
+        fi
+
+        # Convert the main content (from the first heading onward, or the whole
+        # file if there's no intro) to HTML
         STORE_DOMAIN="$STORE_DOMAIN" \
-        pandoc "${{ inputs.documentation-file }}" \
+        pandoc "$CONTENT_FILE" \
             -f markdown-auto_identifiers \
             -t html \
             --wrap=none \
             --lua-filter=external_links.lua \
             -o documentation.html
 
-        # Add back to product link and [ez-toc] shortcode at the top
+        EXCERPT_TEXT=""
+        if [ "$HAS_INTRO" = "true" ]; then
+          # Convert the intro block to HTML, to render above the table of contents
+          STORE_DOMAIN="$STORE_DOMAIN" \
+          pandoc intro.md \
+              -f markdown-auto_identifiers \
+              -t html \
+              --wrap=none \
+              --lua-filter=external_links.lua \
+              -o intro.html
+
+          # Use the last paragraph of the intro block (the actual description,
+          # after any disclaimers) as plain text for the post excerpt - no HTML
+          # or Markdown syntax.
+          awk 'BEGIN{RS=""} {p=$0} END{print p}' intro.md > intro_excerpt.md
+          pandoc intro_excerpt.md -f markdown-auto_identifiers -t plain --wrap=none -o intro_excerpt.txt
+          EXCERPT_TEXT=$(tr '\n' ' ' < intro_excerpt.txt | sed -E 's/ +/ /g; s/^ //; s/ $//')
+        fi
+
+        # Assemble the final HTML: back-link nav, intro (if any), table of
+        # contents, then the main content
         {
-          echo "<p class=\"small\"><strong>Back to <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p>"
+          echo "<nav aria-label=\"Back to product\"><p class=\"small\"><strong>Back to <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p></nav>"
           echo ""
+          if [ "$HAS_INTRO" = "true" ]; then
+            cat intro.html
+            echo ""
+          fi
           echo "[ez-toc]"
           echo ""
           cat documentation.html
@@ -70,11 +112,16 @@ runs:
 
         echo "Updating WordPress page..."
 
+        if [ -n "$EXCERPT_TEXT" ]; then
+          EXCERPT_JSON=$(printf '%s' "$EXCERPT_TEXT" | jq -Rs .)
+          PAYLOAD=$(jq -n --argjson content "$HTML_CONTENT" --argjson excerpt "$EXCERPT_JSON" '{content: $content, excerpt: $excerpt}')
+        else
+          PAYLOAD=$(jq -n --argjson content "$HTML_CONTENT" '{content: $content}')
+        fi
+
         curl -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \
           -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
           -H "Content-Type: application/json" \
-          -d "{
-            \"content\": $HTML_CONTENT
-          }"
+          -d "$PAYLOAD"
 
         echo "Documentation page updated successfully"
