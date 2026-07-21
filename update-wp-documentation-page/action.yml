@@ -93,6 +93,41 @@ runs:
           EXCERPT_TEXT=$(tr '\n' ' ' < intro_excerpt.txt | sed -E 's/ +/ /g; s/^ //; s/ $//')
         fi
 
+        # Extract FAQ Question/Answer pairs for FAQPage schema: any level-3
+        # heading that ends in "?" is treated as a question, its answer is
+        # everything up to the next level-1/2/3 heading (nested level-4+
+        # headings, if any, stay part of the answer). Stored as page meta
+        # (not inlined as a <script> tag) so a separate site-level process
+        # can read it and render the actual FAQPage/Question/Answer schema,
+        # alongside whatever else it links (about/relatedLink/etc).
+        TOTAL_LINES=$(wc -l < "$DOC_FILE")
+        mapfile -t HEADING_LINES < <(grep -n '^#\{1,3\}[[:space:]]' "$DOC_FILE" | cut -d: -f1)
+        HEADING_LINES+=("$((TOTAL_LINES + 1))")
+
+        FAQ_JSON="[]"
+        for i in "${!HEADING_LINES[@]}"; do
+          LINE_NUM="${HEADING_LINES[$i]}"
+          [ "$LINE_NUM" -gt "$TOTAL_LINES" ] && continue
+
+          HEADING_TEXT=$(sed -n "${LINE_NUM}p" "$DOC_FILE")
+          if [[ "$HEADING_TEXT" =~ ^###[[:space:]]+.*\?[[:space:]]*$ ]]; then
+            QUESTION=$(echo "$HEADING_TEXT" | sed -E 's/^###[[:space:]]+//; s/[[:space:]]+$//')
+            NEXT_LINE_NUM="${HEADING_LINES[$((i + 1))]}"
+            ANSWER_START=$((LINE_NUM + 1))
+            ANSWER_END=$((NEXT_LINE_NUM - 1))
+
+            if [ "$ANSWER_END" -ge "$ANSWER_START" ]; then
+              sed -n "${ANSWER_START},${ANSWER_END}p" "$DOC_FILE" > faq_answer.md
+              STORE_DOMAIN="$STORE_DOMAIN" \
+              pandoc faq_answer.md -f markdown-auto_identifiers -t html --wrap=none --lua-filter=external_links.lua -o faq_answer.html
+              ANSWER_HTML=$(cat faq_answer.html)
+              FAQ_JSON=$(jq --arg q "$QUESTION" --arg a "$ANSWER_HTML" '. + [{"name": $q, "text": $a}]' <<< "$FAQ_JSON")
+            fi
+          fi
+        done
+        FAQ_COUNT=$(jq 'length' <<< "$FAQ_JSON")
+        echo "Found $FAQ_COUNT FAQ question(s)"
+
         # Assemble the final HTML: back-link nav, intro (if any), table of
         # contents, then the main content
         {
@@ -117,6 +152,15 @@ runs:
           PAYLOAD=$(jq -n --argjson content "$HTML_CONTENT" --argjson excerpt "$EXCERPT_JSON" '{content: $content, excerpt: $excerpt}')
         else
           PAYLOAD=$(jq -n --argjson content "$HTML_CONTENT" '{content: $content}')
+        fi
+
+        # Store the FAQ Question/Answer pairs (if any) as a page meta field,
+        # JSON-encoded as a string. Site-level code reads meta.nakedcat_faq_schema_questions
+        # and renders the FAQPage schema from it - this action does not output
+        # any schema itself.
+        if [ "$FAQ_COUNT" -gt 0 ]; then
+          FAQ_JSON_STRING=$(jq -c . <<< "$FAQ_JSON")
+          PAYLOAD=$(jq --arg faq "$FAQ_JSON_STRING" '. + {meta: {nakedcat_faq_schema_questions: $faq}}' <<< "$PAYLOAD")
         fi
 
         curl -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \

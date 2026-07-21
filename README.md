@@ -284,6 +284,8 @@ If DOCUMENTATION.md starts with one or more paragraphs before its first `##` hea
 
 Requires `wp/v2/pages` excerpt support to be enabled on the target WordPress install for the excerpt update to take effect.
 
+Every level-3 (`###`) heading whose text ends in `?` is treated as an FAQ question; its answer is everything up to the next level-1/2/3 heading (nested level-4+ headings, if any, stay part of the answer). If any are found, they're sent as a JSON-encoded string in `meta.nakedcat_faq_schema_questions`: `[{"name": "Question?", "text": "<p>Answer HTML</p>"}, ...]`. This action does not render any `FAQPage` schema itself, it only supplies the data; site-level code is expected to read that meta field and build the actual `Question`/`acceptedAnswer` schema. Requires `nakedcat_faq_schema_questions` to be registered as a REST-writable `page` meta field on the target WordPress install (`register_post_meta`), otherwise WordPress silently drops the field.
+
 ### Usage:
 
 ```yaml
