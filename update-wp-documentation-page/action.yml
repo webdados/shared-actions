@@ -154,6 +154,9 @@ runs:
           PAYLOAD=$(jq -n --argjson content "$HTML_CONTENT" '{content: $content}')
         fi
 
+        # Make sure the page uses the site's documentation template
+        PAYLOAD=$(jq '. + {template: "template-documentation.php"}' <<< "$PAYLOAD")
+
         # Store the FAQ Question/Answer pairs (if any) as a page meta field,
         # JSON-encoded as a string. Site-level code reads meta.nakedcat_faq_schema_questions
         # and renders the FAQPage schema from it - this action does not output
