@@ -1,0 +1,66 @@
+name: Update GlotPress Originals
+description: Update a GlotPress project's originals (pot file) via the nakedcat-glotpress-abilities plugin's nakedcat-glotpress/import-originals ability
+
+inputs:
+  pot-file:
+    description: 'The path to the .pot (or .po) file to import, relative to the plugin folder (e.g. languages/my-plugin.pot)'
+    required: true
+  glotpress-url:
+    description: 'The URL of the WordPress/GlotPress site (e.g. https://translate.thewebsite.com), running the nakedcat-glotpress-abilities plugin'
+    required: true
+  glotpress-project-path:
+    description: 'The GlotPress project path to import originals into, as used by GlotPress itself (e.g. wp-plugins/my-plugin)'
+    required: true
+  wordpress-user:
+    description: 'WordPress user (with GlotPress admin permission) to authenticate the REST API call - Uses an Application Password, not the normal login password'
+    required: true
+  wordpress-password:
+    description: 'WordPress Application Password for wordpress-user'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🌐 Update GlotPress Originals
+      shell: bash
+      run: |
+        POT_FILE="${{ inputs.pot-file }}"
+        GLOTPRESS_URL="${{ inputs.glotpress-url }}"
+        PROJECT_PATH="${{ inputs.glotpress-project-path }}"
+        WORDPRESS_USER="${{ inputs.wordpress-user }}"
+        WORDPRESS_PASSWORD="${{ inputs.wordpress-password }}"
+
+        if [ ! -f "$POT_FILE" ]; then
+          echo "::error::Pot file not found: $POT_FILE"
+          exit 1
+        fi
+
+        echo "Importing originals from $POT_FILE into GlotPress project $PROJECT_PATH..."
+
+        PAYLOAD=$(jq -n \
+          --arg project_path "$PROJECT_PATH" \
+          --rawfile pot_content "$POT_FILE" \
+          '{input: {project_path: $project_path, pot_content: $pot_content}}')
+
+        RESPONSE=$(curl -s -w '\n%{http_code}' \
+          -X POST "$GLOTPRESS_URL/wp-json/wp-abilities/v1/abilities/nakedcat-glotpress/import-originals/run" \
+          -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
+          -H "Content-Type: application/json" \
+          -d "$PAYLOAD")
+
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+
+        echo "$BODY" | jq . 2>/dev/null || echo "$BODY"
+
+        if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+          echo "::error::GlotPress import-originals call failed (HTTP $HTTP_CODE)"
+          exit 1
+        fi
+
+        ORIGINALS_ERROR=$(echo "$BODY" | jq -r '.originals_error // 0')
+        if [ "$ORIGINALS_ERROR" != "0" ] && [ "$ORIGINALS_ERROR" != "null" ]; then
+          echo "::warning::$ORIGINALS_ERROR original(s) failed to import"
+        fi
+
+        echo "GlotPress originals updated successfully"

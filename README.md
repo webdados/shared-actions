@@ -429,3 +429,50 @@ jobs:
         wordpress-password: ${{ secrets.WORDPRESS_PASSWORD }}
         woo-store-url:      https://thewebsite.com
 ```
+
+
+
+## Update GlotPress Originals
+
+Update a GlotPress project's originals (source strings) from a `.pot` file, via the [`nakedcat-glotpress-abilities`](https://github.com/Naked-Cat-Plugins/glotpress-abilities) WordPress plugin's `nakedcat-glotpress/import-originals` ability (requires that plugin, and GlotPress itself, to be active on the target site). Reuses GlotPress's own import machinery (same as its admin "Import Originals" page / `wp glotpress import-originals`): new strings are added, changed ones updated in place, missing ones marked obsolete, and close textual matches treated as a fuzzy rename rather than a new string. Only originals are affected, never translations.
+
+Authenticates with a WordPress [Application Password](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/) (not the normal login password) for a user with GlotPress admin permission — the same permission GlotPress itself requires to import originals through its own UI.
+
+### Usage:
+
+```yaml
+name: Update GlotPress originals when pushing tag
+
+on:
+  push:
+    tags:
+    - '*'
+
+env:
+  SLUG: the-plugin-slug
+
+jobs:
+  update:
+    name: Update GlotPress originals
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: ⬇️ Checkout
+      uses: actions/checkout@v4
+
+    # Build the .pot file, e.g. with wp-cli-i18n - languages/${{ env.SLUG }}.pot
+    - name: 🌍 Generate pot file
+      run: |
+        composer global require wp-cli/i18n-command
+        ~/.composer/vendor/bin/wp i18n make-pot . languages/${{ env.SLUG }}.pot
+
+    # Import the pot file's originals into the GlotPress project
+    - name: 🌐 Update GlotPress Originals
+      uses: webdados/shared-actions/update-glotpress-originals@main
+      with:
+        pot-file:               languages/${{ env.SLUG }}.pot
+        glotpress-url:          https://translate.thewebsite.com
+        glotpress-project-path: wp-plugins/${{ env.SLUG }}
+        wordpress-user:         ${{ secrets.GLOTPRESS_USER }}
+        wordpress-password:     ${{ secrets.GLOTPRESS_APP_PASSWORD }}
+```
