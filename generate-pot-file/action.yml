@@ -9,6 +9,10 @@ inputs:
     description: 'The directory to scan for translatable strings, relative to the plugin folder. The plugin main file inside it is used to auto-detect the text domain, so a plugin that intentionally reuses a parent/core text domain for some strings (e.g. a PRO add-on sharing labels with its Free plugin) correctly keeps only its own domain''s strings in its own pot file'
     required: false
     default: '.'
+  exclude:
+    description: 'Comma-separated paths (relative to source) to skip, passed through to `wp i18n make-pot --exclude`. A compiled/minified JS build output directory (e.g. a webpack build folder) should always be excluded here: WP-CLI''s JS parser can crash with a deep-recursion error on minified bundles, source JS never triggers this'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -18,12 +22,17 @@ runs:
       run: |
         POT_FILE="${{ inputs.pot-file }}"
         SOURCE="${{ inputs.source }}"
+        EXCLUDE="${{ inputs.exclude }}"
 
         mkdir -p "$(dirname "$POT_FILE")"
 
         composer global require wp-cli/i18n-command
 
-        ~/.composer/vendor/bin/wp i18n make-pot "$SOURCE" "$POT_FILE"
+        if [ -n "$EXCLUDE" ]; then
+          ~/.composer/vendor/bin/wp i18n make-pot "$SOURCE" "$POT_FILE" --exclude="$EXCLUDE"
+        else
+          ~/.composer/vendor/bin/wp i18n make-pot "$SOURCE" "$POT_FILE"
+        fi
 
         if [ ! -f "$POT_FILE" ]; then
           echo "::error::Pot file was not generated: $POT_FILE"
