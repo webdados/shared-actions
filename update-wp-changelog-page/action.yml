@@ -54,20 +54,31 @@ runs:
         STORE_DOMAIN="$STORE_DOMAIN" \
         pandoc changelog_preprocessed.md -f markdown-auto_identifiers -t html --wrap=none --lua-filter=external_links.lua -o changelog.html
 
-        # Add back to product link at the top
-        echo "<p class=\"small\"><strong>Back to <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p>" > changelog_with_link.html
+        # Add back to product link at the top, wrapped in <nav> so it is identified
+        # as navigation rather than page content. Without this a crawler reads
+        # "Back to <plugin>" as the opening words of the page, and it lands at the
+        # front of any auto-generated meta description.
+        echo "<nav aria-label=\"Back to product\"><p class=\"small\"><strong>Back to <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p></nav>" > changelog_with_link.html
         cat changelog.html >> changelog_with_link.html
         
         # Read the HTML content and escape it for JSON
         HTML_CONTENT=$(cat changelog_with_link.html | jq -Rs .)
         
+        # A written excerpt, which is what Yoast uses for the meta description when
+        # no custom one is set. A changelog has no intro paragraph to extract from,
+        # unlike the documentation page, so this is composed from the plugin name
+        # the action already receives. Left to itself Yoast scrapes the page body
+        # and produces the back link followed by the newest version heading, which
+        # describes nothing.
+        EXCERPT_TEXT="Changelog for $PRODUCT_NAME: new features, tweaks and fixes in every release, newest first."
+        EXCERPT_JSON=$(printf '%s' "$EXCERPT_TEXT" | jq -Rs .)
+        PAYLOAD=$(jq -n --argjson content "$HTML_CONTENT" --argjson excerpt "$EXCERPT_JSON" '{content: $content, excerpt: $excerpt}')
+
         echo "Updating WordPress page..."
         
         curl -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \
           -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
           -H "Content-Type: application/json" \
-          -d "{
-            \"content\": $HTML_CONTENT
-          }"
+          -d "$PAYLOAD"
         
         echo "Changelog page updated successfully"
