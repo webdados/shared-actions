@@ -42,11 +42,15 @@ runs:
           --rawfile pot_content "$POT_FILE" \
           '{input: {project_path: $project_path, pot_content: $pot_content}}')
 
+        # See update-wp-documentation-page. This one carries a whole POT file, so it is
+        # the likeliest of the three to hit the 128 KB per-argument limit next.
+        printf '%s' "$PAYLOAD" > "$RUNNER_TEMP/glotpress-payload.json"
+
         RESPONSE=$(curl -s -w '\n%{http_code}' \
           -X POST "$GLOTPRESS_URL/wp-json/wp-abilities/v1/abilities/nakedcat-glotpress/import-originals/run" \
           -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
           -H "Content-Type: application/json" \
-          -d "$PAYLOAD")
+          -d @"$RUNNER_TEMP/glotpress-payload.json")
 
         HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
         BODY=$(echo "$RESPONSE" | sed '$d')

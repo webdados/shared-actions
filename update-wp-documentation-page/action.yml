@@ -166,9 +166,18 @@ runs:
           PAYLOAD=$(jq --arg faq "$FAQ_JSON_STRING" '. + {meta: {nakedcat_faq_schema_questions: $faq}}' <<< "$PAYLOAD")
         fi
 
+        # Written to a file and sent with -d @, not -d "$PAYLOAD".
+        #
+        # Linux caps a single argv entry at 128 KB, whatever the much larger ARG_MAX
+        # says, and this payload carries the whole documentation page as HTML plus every
+        # FAQ answer a second time inside the schema meta. A plugin whose docs grow past
+        # that gets "curl: Argument list too long" and the page is silently never updated,
+        # which is what happened rather than any content being wrong.
+        printf '%s' "$PAYLOAD" > "$RUNNER_TEMP/documentation-payload.json"
+
         curl -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \
           -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
           -H "Content-Type: application/json" \
-          -d "$PAYLOAD"
+          -d @"$RUNNER_TEMP/documentation-payload.json"
 
         echo "Documentation page updated successfully"

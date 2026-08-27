@@ -76,9 +76,13 @@ runs:
 
         echo "Updating WordPress page..."
         
+        # See update-wp-documentation-page: a payload on the command line is capped at
+        # 128 KB per argument, and a long-lived plugin's changelog gets there eventually.
+        printf '%s' "$PAYLOAD" > "$RUNNER_TEMP/changelog-payload.json"
+
         curl -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \
           -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
           -H "Content-Type: application/json" \
-          -d "$PAYLOAD"
+          -d @"$RUNNER_TEMP/changelog-payload.json"
         
         echo "Changelog page updated successfully"
