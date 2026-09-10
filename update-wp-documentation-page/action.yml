@@ -142,38 +142,42 @@ runs:
           cat documentation.html
         } > documentation_with_header.html
 
-        # Read the HTML content and escape it for JSON
-        HTML_CONTENT=$(cat documentation_with_header.html | jq -Rs .)
-
         echo "Updating WordPress page..."
 
-        if [ -n "$EXCERPT_TEXT" ]; then
-          EXCERPT_JSON=$(printf '%s' "$EXCERPT_TEXT" | jq -Rs .)
-          PAYLOAD=$(jq -n --argjson content "$HTML_CONTENT" --argjson excerpt "$EXCERPT_JSON" '{content: $content, excerpt: $excerpt}')
-        else
-          PAYLOAD=$(jq -n --argjson content "$HTML_CONTENT" '{content: $content}')
-        fi
+        # NOTHING BIG GOES THROUGH argv, not to curl and not to jq either.
+        #
+        # Linux caps a SINGLE argv entry at 128 KB (MAX_ARG_STRLEN), whatever the much
+        # larger ARG_MAX says, and both of the big values here are past that on a plugin
+        # with long documentation: the page HTML, and every FAQ answer a second time
+        # inside the schema meta. Sending the finished payload to curl from a file was
+        # only half of it, because jq was still being handed the same strings with
+        # --arg/--argjson to build that payload, and died first with
+        # "jq: Argument list too long" while the page was silently never updated.
+        #
+        # So the payload is assembled in one jq call that reads the large values from
+        # files with --rawfile. Keep it that way: any --arg here must stay small.
+        JQ_ARGS=(-n --rawfile content documentation_with_header.html)
+        JQ_FILTER='{content: $content, template: "template-documentation.php"}'
 
-        # Make sure the page uses the site's documentation template
-        PAYLOAD=$(jq '. + {template: "template-documentation.php"}' <<< "$PAYLOAD")
+        if [ -n "$EXCERPT_TEXT" ]; then
+          JQ_ARGS+=(--arg excerpt "$EXCERPT_TEXT")
+          JQ_FILTER="$JQ_FILTER + {excerpt: \$excerpt}"
+        fi
 
         # Store the FAQ Question/Answer pairs (if any) as a page meta field,
         # JSON-encoded as a string. Site-level code reads meta.nakedcat_faq_schema_questions
         # and renders the FAQPage schema from it - this action does not output
         # any schema itself.
+        #
+        # -j so the file holds the JSON and no trailing newline: --rawfile takes the file
+        # byte for byte, and a newline on the end would be stored inside the meta string.
         if [ "$FAQ_COUNT" -gt 0 ]; then
-          FAQ_JSON_STRING=$(jq -c . <<< "$FAQ_JSON")
-          PAYLOAD=$(jq --arg faq "$FAQ_JSON_STRING" '. + {meta: {nakedcat_faq_schema_questions: $faq}}' <<< "$PAYLOAD")
+          printf '%s' "$FAQ_JSON" | jq -cj . > faq_questions.json
+          JQ_ARGS+=(--rawfile faq faq_questions.json)
+          JQ_FILTER="$JQ_FILTER + {meta: {nakedcat_faq_schema_questions: \$faq}}"
         fi
 
-        # Written to a file and sent with -d @, not -d "$PAYLOAD".
-        #
-        # Linux caps a single argv entry at 128 KB, whatever the much larger ARG_MAX
-        # says, and this payload carries the whole documentation page as HTML plus every
-        # FAQ answer a second time inside the schema meta. A plugin whose docs grow past
-        # that gets "curl: Argument list too long" and the page is silently never updated,
-        # which is what happened rather than any content being wrong.
-        printf '%s' "$PAYLOAD" > "$RUNNER_TEMP/documentation-payload.json"
+        jq "${JQ_ARGS[@]}" "$JQ_FILTER" > "$RUNNER_TEMP/documentation-payload.json"
 
         curl -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \
           -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
