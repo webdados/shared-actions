@@ -59,6 +59,42 @@ jobs:
 
 
 
+## Delete Release
+
+Delete the GitHub release of a tag when that tag is deleted, so a removed version never stays published. Also removes the draft GitHub turns the release into once its tag is gone.
+
+### Usage:
+
+No checkout is needed. Deleting a branch never deletes anything, so the workflow does not need its own `if` on the ref type.
+
+```yaml
+name: Delete release when deleting tag
+
+on:
+  delete:
+
+permissions:
+  contents: write  # needed to delete releases
+
+jobs:
+  delete:
+    name: 🗑️ Delete Release
+    runs-on: ubuntu-latest
+    steps:
+
+    # Delete the release of the deleted tag
+    - name: 🗑️ Delete Release
+      uses: webdados/shared-actions/delete-release@main
+      # with:
+        # tag: 1.2.3                      # Optional - Defaults to the deleted tag
+        # repository: owner/repo          # Optional - Defaults to the current repository
+        # github-token: ${{ secrets.X }}  # Optional - Defaults to the workflow token, needs contents: write on that repository
+```
+
+A tag with no release is not an error. Anything else is, including a repository the token cannot reach, so a broken setup fails the job instead of passing for success.
+
+
+
 ## Upload ZIP via SFTP
 
 Upload a zip file to a server via SFTP

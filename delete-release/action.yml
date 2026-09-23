@@ -1,0 +1,66 @@
+name: 'Delete Release'
+description: 'Deletes the GitHub release of a deleted tag, including the draft GitHub leaves behind'
+
+inputs:
+  tag:
+    description: 'Tag whose release is deleted. Defaults to the tag that triggered the delete event'
+    required: false
+    default: ''
+  repository:
+    description: 'Repository holding the release, as owner/name. Defaults to the current repository'
+    required: false
+    default: ''
+  github-token:
+    description: 'Token allowed to delete releases in that repository (contents: write). Defaults to the workflow token'
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🗑️ Delete Release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        INPUT_TAG: ${{ inputs.tag }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        EVENT_NAME: ${{ github.event_name }}
+        EVENT_REF: ${{ github.event.ref }}
+        EVENT_REF_TYPE: ${{ github.event.ref_type }}
+      run: |
+        # A branch deleted under the same name as a tag must never take the tag's release with it.
+        if [ "$EVENT_NAME" = "delete" ] && [ "$EVENT_REF_TYPE" != "tag" ]; then
+          echo "A $EVENT_REF_TYPE was deleted, not a tag: nothing to do"
+          exit 0
+        fi
+
+        TAG="${INPUT_TAG:-$EVENT_REF}"
+        REPO="${INPUT_REPOSITORY:-$GITHUB_REPOSITORY}"
+        if [ -z "$TAG" ]; then
+          echo "::error::No tag given, and this was not triggered by deleting one"
+          exit 1
+        fi
+
+        # No checkout is needed: --repo tells gh which repository to act on. Without it, and
+        # without a checkout, gh fails with "not a git repository".
+        # gh release view finds the release by tag even after the tag is gone, when GitHub has
+        # turned it into a draft.
+        # gh answers "release not found" for a repository it cannot see, too, so that has to be
+        # ruled out first or a wrong repository input would pass for "nothing to do".
+        if ! REPO_OUTPUT=$(gh repo view "$REPO" --json nameWithOwner 2>&1); then
+          echo "::error::Cannot reach repository $REPO with this token: $REPO_OUTPUT"
+          exit 1
+        fi
+
+        # Only a missing release is fine. Anything else (a bad token, no permission, GitHub down)
+        # fails the job, so a broken setup can never pass for success again.
+        echo "Deleting the release for tag $TAG in $REPO"
+        if VIEW_OUTPUT=$(gh release view "$TAG" --repo "$REPO" --json tagName 2>&1); then
+          gh release delete "$TAG" --repo "$REPO" --yes
+          echo "Deleted"
+        elif echo "$VIEW_OUTPUT" | grep -qi "release not found"; then
+          echo "No release for tag $TAG: nothing to do"
+        else
+          echo "::error::Could not look up the release for tag $TAG: $VIEW_OUTPUT"
+          exit 1
+        fi
