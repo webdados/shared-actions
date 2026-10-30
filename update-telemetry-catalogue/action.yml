@@ -9,7 +9,7 @@ inputs:
     description: 'The version being released: the catalogue must have been built for it. Defaults to the tag name, without a leading v'
     default: ''
   wordpress-user:
-    description: 'WordPress user with the manage_options capability on the store'
+    description: 'WordPress user with the manage_woocommerce capability on the store (a Shop Manager or an Administrator)'
     required: true
   wordpress-password:
     description: 'That user''s Application Password'

@@ -562,7 +562,7 @@ Send a premium plugin's `telemetry-catalogue.json` to the store, so the telemetr
 
 The step fails, and sends nothing, when the file is missing or was built for another version than the one being released (the tag name, without a leading `v`, unless `version` is given). The store refuses products that are not in its telemetry registry.
 
-Authenticates with a WordPress [Application Password](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/) for a user with the `manage_options` capability.
+Authenticates with a WordPress [Application Password](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/) for a Shop Manager or an Administrator (the `manage_woocommerce` capability).
 
 ### Usage:
 
