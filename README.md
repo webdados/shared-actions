@@ -550,3 +550,26 @@ jobs:
         wordpress-user:         ${{ secrets.GLOTPRESS_USER }}
         wordpress-password:     ${{ secrets.GLOTPRESS_APP_PASSWORD }}
 ```
+
+
+
+## Update telemetry catalogue
+
+Send a premium plugin's `telemetry-catalogue.json` to the store, so the telemetry dashboard on nakedcatplugins.com shows the English labels of what the plugin reports instead of its keys. The file is built locally with `wp nakedcat-sdk telemetry catalogue` (from the [Naked Cat Plugin SDK](https://github.com/Naked-Cat-Plugins/nakedcat-plugin-sdk)) when a version is prepared, and committed with the plugin.
+
+The step fails, and sends nothing, when the file is missing or was built for another version than the one being released (the tag name, without a leading `v`, unless `version` is given). The store refuses products that are not in its telemetry registry.
+
+Authenticates with a WordPress [Application Password](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/) for a user with the `manage_options` capability.
+
+### Usage:
+
+```yaml
+    - name: 📊 Update telemetry catalogue
+      uses: webdados/shared-actions/update-telemetry-catalogue@main
+      with:
+        # catalogue-file:    telemetry-catalogue.json   # Optional - Defaults to telemetry-catalogue.json
+        # version:           1.2.3                      # Optional - Defaults to the tag name, without a leading v
+        wordpress-user:      ${{ secrets.WORDPRESS_USER }}
+        wordpress-password:  ${{ secrets.WORDPRESS_PASSWORD }}
+        woo-store-url:       https://thewebsite.com
+```

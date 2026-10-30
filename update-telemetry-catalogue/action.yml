@@ -1,0 +1,58 @@
+name: Update telemetry catalogue
+description: Send a plugin's telemetry-catalogue.json (built by the Naked Cat Plugin SDK) to the store, so its telemetry dashboard shows labels instead of keys
+
+inputs:
+  catalogue-file:
+    description: 'The catalogue built with wp nakedcat-sdk telemetry catalogue'
+    default: 'telemetry-catalogue.json'
+  version:
+    description: 'The version being released: the catalogue must have been built for it. Defaults to the tag name, without a leading v'
+    default: ''
+  wordpress-user:
+    description: 'WordPress user with the manage_options capability on the store'
+    required: true
+  wordpress-password:
+    description: 'That user''s Application Password'
+    required: true
+  woo-store-url:
+    description: 'The URL of the store (e.g. https://nakedcatplugins.com)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 📊 Update telemetry catalogue
+      shell: bash
+      env:
+        CATALOGUE_FILE: ${{ inputs.catalogue-file }}
+        RELEASE_VERSION: ${{ inputs.version }}
+        WORDPRESS_USER: ${{ inputs.wordpress-user }}
+        WORDPRESS_PASSWORD: ${{ inputs.wordpress-password }}
+        STORE_URL: ${{ inputs.woo-store-url }}
+      run: |
+        if [ ! -f "$CATALOGUE_FILE" ]; then
+          echo "::error::$CATALOGUE_FILE not found. Build it with: wp nakedcat-sdk telemetry catalogue"
+          exit 1
+        fi
+        if [ -z "$RELEASE_VERSION" ]; then
+          RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+        fi
+        CATALOGUE_VERSION=$(jq -r '.version // empty' "$CATALOGUE_FILE")
+        PRODUCT=$(jq -r '.product // empty' "$CATALOGUE_FILE")
+        if [ "$CATALOGUE_VERSION" != "$RELEASE_VERSION" ]; then
+          echo "::error::$CATALOGUE_FILE was built for version '$CATALOGUE_VERSION', not '$RELEASE_VERSION'. Rebuild it with: wp nakedcat-sdk telemetry catalogue"
+          exit 1
+        fi
+
+        HTTP_CODE=$(curl -sS -o response.json -w '%{http_code}' \
+          -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
+          -H 'Content-Type: application/json' \
+          --data-binary "@$CATALOGUE_FILE" \
+          "${STORE_URL%/}/wp-json/nakedcat-telemetry/v1/catalogue") || true
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "::error::The store answered $HTTP_CODE: $(cat response.json 2>/dev/null)"
+          rm -f response.json
+          exit 1
+        fi
+        rm -f response.json
+        echo "✅ Telemetry catalogue of $PRODUCT $CATALOGUE_VERSION sent"
