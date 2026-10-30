@@ -12,8 +12,11 @@ inputs:
     description: 'The SFTP username'
     required: true
   sftp-password:
-    description: 'The SFTP password'
-    required: true
+    description: 'The SFTP password - Ignored when sftp-private-key is set'
+    default: ''
+  sftp-private-key:
+    description: 'An SSH private key (the whole file) - Use it for servers that take keys only'
+    default: ''
   sftp-path:
     description: 'The path on the SFTP server to upload the zip file to'
     required: true
@@ -32,17 +35,29 @@ runs:
   steps:
     - name: 🆙 Upload to server via SFTP command
       shell: bash
+      env:
+        SFTP_PASSWORD: ${{ inputs.sftp-password }}
+        SFTP_PRIVATE_KEY: ${{ inputs.sftp-private-key }}
       run: |
         INPUT_ZIP="${{ inputs.zip-filename }}"
         ZIP_NAME="${INPUT_ZIP:-$SLUG}"
         INPUT_FILE="${{ inputs.file-to-upload }}"
         UPLOAD_FILE="${INPUT_FILE:-$ZIP_NAME.zip}"
-        if [[ "${{ inputs.install-sshpass }}" != "false" ]]; then
-          sudo apt-get update
-          sudo apt-get install -y sshpass
-        fi
         echo "Uploading file: $UPLOAD_FILE"
-        sshpass -p "${{ inputs.sftp-password }}" sftp -P ${{ inputs.sftp-port }} -o StrictHostKeyChecking=no ${{ inputs.sftp-username }}@${{ inputs.sftp-host }} << EOF
+        if [[ -n "$SFTP_PRIVATE_KEY" ]]; then
+          KEY_FILE="$(mktemp)"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s\n' "$SFTP_PRIVATE_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          SFTP_COMMAND=(sftp -i "$KEY_FILE" -o IdentitiesOnly=yes -o BatchMode=yes)
+        else
+          if [[ "${{ inputs.install-sshpass }}" != "false" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y sshpass
+          fi
+          SFTP_COMMAND=(sshpass -p "$SFTP_PASSWORD" sftp)
+        fi
+        "${SFTP_COMMAND[@]}" -P ${{ inputs.sftp-port }} -o StrictHostKeyChecking=no ${{ inputs.sftp-username }}@${{ inputs.sftp-host }} << EOF
         cd ${{ inputs.sftp-path }}
         put "$UPLOAD_FILE"
         ls -la
