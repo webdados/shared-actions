@@ -97,6 +97,8 @@ A tag with no release is not an error. Anything else is, including a repository 
 
 ## Upload ZIP via SFTP
 
+Logs in with the password by default, or with an SSH key when `sftp-private-key` is set (for servers that take keys only, such as webdados7 since 2026-10-27).
+
 Upload a zip file to a server via SFTP
 
 ### Usage:
@@ -150,6 +152,7 @@ jobs:
         sftp-port:       ${{ vars.FTP_PORT }}
         sftp-username:   ${{ secrets.FTP_USERNAME }}
         sftp-password:   ${{ secrets.FTP_PASSWORD }}
+        # sftp-private-key: ${{ secrets.SFTP_PRIVATE_KEY }}  # Optional - For servers that take SSH keys only: the whole private key file; the password is then ignored
         sftp-path:       /the_plugins_folder_on_the_server/
         # zip-filename:  zip-filename                                    # Optional (without ".zip") - Defaults to env.SLUG
         # file-to-upload: filename.json                                  # Optional - If set, uploads this specific file instead of the default {slug}.zip
