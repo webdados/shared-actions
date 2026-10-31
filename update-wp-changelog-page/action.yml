@@ -80,9 +80,18 @@ runs:
         # 128 KB per argument, and a long-lived plugin's changelog gets there eventually.
         printf '%s' "$PAYLOAD" > "$RUNNER_TEMP/changelog-payload.json"
 
-        curl -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \
+        HTTP_CODE=$(curl -s -o "$RUNNER_TEMP/changelog-response.json" -w '%{http_code}' \
+          -X POST "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID" \
           -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
           -H "Content-Type: application/json" \
-          -d @"$RUNNER_TEMP/changelog-payload.json"
-        
-        echo "Changelog page updated successfully"
+          -d @"$RUNNER_TEMP/changelog-payload.json") || HTTP_CODE=000
+
+        # WordPress answers errors (a deleted user, a revoked password, a missing page) with a
+        # 4xx and a JSON code and message. Without this check the step stayed green and the
+        # page silently kept its old content (2026-10-31).
+        if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ] || ! jq -e '.id' "$RUNNER_TEMP/changelog-response.json" >/dev/null 2>&1; then
+          echo "::error::Changelog page $PAGE_ID was not updated (HTTP $HTTP_CODE): $(jq -r '"\(.code // "no code"): \(.message // "no message")"' "$RUNNER_TEMP/changelog-response.json" 2>/dev/null || head -c 300 "$RUNNER_TEMP/changelog-response.json")"
+          exit 1
+        fi
+
+        echo "Changelog page $PAGE_ID updated, modified $(jq -r '.modified_gmt' "$RUNNER_TEMP/changelog-response.json") UTC"

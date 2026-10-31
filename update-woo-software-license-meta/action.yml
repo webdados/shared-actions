@@ -59,10 +59,12 @@ runs:
         
         echo "Updating products in WooCommerce with version: $VERSION, date: $CURRENT_DATE, requires at least: $REQUIRES_AT_LEAST, tested up to: $TESTED_UP_TO"
         
+        FAILED_PRODUCTS=""
         for PRODUCT_ID in $PRODUCT_IDS; do
           echo "Updating product ID: $PRODUCT_ID"
           
-          curl -X PUT "${{ inputs.woo-store-url }}/wp-json/wc/v3/products/$PRODUCT_ID" \
+          HTTP_CODE=$(curl -s -o "$RUNNER_TEMP/product-response.json" -w '%{http_code}' \
+            -X PUT "${{ inputs.woo-store-url }}/wp-json/wc/v3/products/$PRODUCT_ID" \
             -u "$CONSUMER_KEY:$CONSUMER_SECRET" \
             -H "Content-Type: application/json" \
             -d "{
@@ -84,7 +86,19 @@ runs:
                   \"value\": \"$TESTED_UP_TO\"
                 }
               ]
-            }"
-          
-          echo ""
+            }") || HTTP_CODE=000
+
+          # A refused key or a missing product comes back as a 4xx with a JSON code and message,
+          # which used to leave the step green. Try every product, then fail if any was refused.
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ] || ! jq -e '.id' "$RUNNER_TEMP/product-response.json" >/dev/null 2>&1; then
+            echo "::error::Product $PRODUCT_ID was not updated (HTTP $HTTP_CODE): $(jq -r '"\(.code // "no code"): \(.message // "no message")"' "$RUNNER_TEMP/product-response.json" 2>/dev/null || head -c 300 "$RUNNER_TEMP/product-response.json")"
+            FAILED_PRODUCTS="$FAILED_PRODUCTS $PRODUCT_ID"
+          else
+            echo "Product $PRODUCT_ID updated"
+          fi
         done
+
+        if [ -n "$FAILED_PRODUCTS" ]; then
+          echo "::error::Products not updated:$FAILED_PRODUCTS"
+          exit 1
+        fi
