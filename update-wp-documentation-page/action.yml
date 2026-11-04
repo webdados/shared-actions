@@ -128,10 +128,28 @@ runs:
         FAQ_COUNT=$(jq 'length' <<< "$FAQ_JSON")
         echo "Found $FAQ_COUNT FAQ question(s)"
 
+        # The back link is written in the page's own language, read from the
+        # page's `_nakedcatplugins_page_lang` meta (Language Attribute for
+        # Container Blocks). No meta, or a site without it: English.
+        PAGE_LANG=$(curl -s -u "$WORDPRESS_USER:$WORDPRESS_PASSWORD" \
+          "${{ inputs.woo-store-url }}/wp-json/wp/v2/pages/$PAGE_ID?context=edit&_fields=meta" \
+          | jq -r '.meta._nakedcatplugins_page_lang // empty' 2>/dev/null || true)
+        case "$PAGE_LANG" in
+          pt*)
+            BACK_LABEL="Voltar ao produto"
+            BACK_TEXT="Voltar a"
+            ;;
+          *)
+            BACK_LABEL="Back to product"
+            BACK_TEXT="Back to"
+            ;;
+        esac
+        echo "Page language: ${PAGE_LANG:-site default}"
+
         # Assemble the final HTML: back-link nav, intro (if any), table of
         # contents, then the main content
         {
-          echo "<nav aria-label=\"Back to product\"><p class=\"small\"><strong>Back to <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p></nav>"
+          echo "<nav aria-label=\"$BACK_LABEL\"><p class=\"small\"><strong>$BACK_TEXT <a href=\"$PRODUCT_URL\">$PRODUCT_NAME</a></strong></p></nav>"
           echo ""
           if [ "$HAS_INTRO" = "true" ]; then
             cat intro.html
