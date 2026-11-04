@@ -230,6 +230,18 @@ jobs:
         woo-store-url:        https://thewebsite.com
 ```
 
+It writes `_sl_new_version`, `_sl_last_updated`, `_sl_version_required` and `_sl_tested_up_to` from the
+tag and the main file's header, and `_nakedcat_requires_plugins` from an optional
+`Naked Cat Requires:` header line, the other plugins (folder name and minimum version, comma
+separated) the release needs:
+
+```php
+ * Naked Cat Requires:   shop-as-client 8.6
+```
+
+nakedcatplugins.com adds it to the update answer, and the Naked Cat Plugins SDK (1.4.0 and later)
+only offers the update once a site has those versions. A release without the line clears it.
+
 
 
 ## Update WP Changelog page
