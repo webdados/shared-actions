@@ -242,6 +242,12 @@ separated) the release needs:
 nakedcatplugins.com adds it to the update answer, and the Naked Cat Plugins SDK (1.4.0 and later)
 only offers the update once a site has those versions. A release without the line clears it.
 
+It also writes `_nakedcat_requires_php`, `_nakedcat_requires_wp` and `_nakedcat_requires_wc` from the
+`Requires PHP`, `Requires at least` and `WC requires at least` header lines. nakedcatplugins.com adds
+them to the update answer as `requires_php`, `requires` and `requires_wc`, so WordPress (and the
+Naked Cat Plugins SDK) does not offer the update to a site below them. A missing line clears its
+value; a value that is not a plain version (`7.4`, `6.9.1`) fails the release.
+
 
 
 ## Update WP Changelog page

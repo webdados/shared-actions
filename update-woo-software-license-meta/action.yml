@@ -1,5 +1,5 @@
 name: Update Woo Software License Meta
-description: Update WooCommerce "WP Software License " product meta data - version, last updates, version required, and tested up to
+description: Update WooCommerce "WP Software License " product meta data - version, last updates, required PHP, WordPress and WooCommerce versions, required plugins, and tested up to
 
 inputs:
   plugin-filename:
@@ -77,7 +77,34 @@ runs:
         ) || { echo "::error::Unreadable Naked Cat Requires header: $REQUIRES_PLUGINS_HEADER"; exit 1; }
         REQUIRES_PLUGINS=$(printf '%s' "$REQUIRES_PLUGINS" | jq -r .)
 
-        echo "Updating products in WooCommerce with version: $VERSION, date: $CURRENT_DATE, requires at least: $REQUIRES_AT_LEAST, tested up to: $TESTED_UP_TO, requires plugins: ${REQUIRES_PLUGINS:-none}"
+        # PHP, WordPress and WooCommerce versions this release needs, from "Requires PHP", "Requires at
+        # least" and "WC requires at least", for the store to add to the update answer as requires_php,
+        # requires and requires_wc: WordPress and the Naked Cat Plugins SDK then do not offer the update
+        # to a site below them. Always written, so a release without a header clears what an earlier one
+        # declared. A value that is not a plain version (7.4, 6.9.1) fails the release.
+        REQUIRES_PHP=$(
+          awk '/^[[:space:]]*\*[[:space:]]*Requires PHP:/{
+            sub(/^[^:]*:[[:space:]]*/, "", $0)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+            print; exit
+          }' "$MAIN_PLUGIN_FILE"
+        )
+        REQUIRES_WC=$(
+          awk '/^[[:space:]]*\*[[:space:]]*WC requires at least:/{
+            sub(/^[^:]*:[[:space:]]*/, "", $0)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+            print; exit
+          }' "$MAIN_PLUGIN_FILE"
+        )
+        for PAIR in "Requires PHP=$REQUIRES_PHP" "Requires at least=$REQUIRES_AT_LEAST" "WC requires at least=$REQUIRES_WC"; do
+          VALUE="${PAIR#*=}"
+          if [ -n "$VALUE" ] && ! printf '%s' "$VALUE" | grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'; then
+            echo "::error::Unreadable ${PAIR%%=*} header in $MAIN_PLUGIN_FILE: $VALUE"
+            exit 1
+          fi
+        done
+
+        echo "Updating products in WooCommerce with version: $VERSION, date: $CURRENT_DATE, requires at least: $REQUIRES_AT_LEAST, requires PHP: ${REQUIRES_PHP:-none}, requires WooCommerce: ${REQUIRES_WC:-none}, tested up to: $TESTED_UP_TO, requires plugins: ${REQUIRES_PLUGINS:-none}"
 
         PAYLOAD=$(jq -n -c \
           --arg version "$VERSION" \
@@ -85,12 +112,17 @@ runs:
           --arg requires "$REQUIRES_AT_LEAST" \
           --arg tested "$TESTED_UP_TO" \
           --arg requires_plugins "$REQUIRES_PLUGINS" \
+          --arg requires_php "$REQUIRES_PHP" \
+          --arg requires_wc "$REQUIRES_WC" \
           '{ meta_data: [
               { key: "_sl_new_version", value: $version },
               { key: "_sl_last_updated", value: $date },
               { key: "_sl_version_required", value: $requires },
               { key: "_sl_tested_up_to", value: $tested },
-              { key: "_nakedcat_requires_plugins", value: $requires_plugins }
+              { key: "_nakedcat_requires_plugins", value: $requires_plugins },
+              { key: "_nakedcat_requires_php", value: $requires_php },
+              { key: "_nakedcat_requires_wp", value: $requires },
+              { key: "_nakedcat_requires_wc", value: $requires_wc }
             ] }')
 
         FAILED_PRODUCTS=""
