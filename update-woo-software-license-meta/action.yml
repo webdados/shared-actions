@@ -104,6 +104,26 @@ runs:
           fi
         done
 
+        # Plugins that bundle the Naked Cat Plugins SDK 1.5 or later: the headers must say the floor of
+        # that copy's floors.php (one floor for every product, set in the SDK), or the release fails.
+        FLOORS_FILE="$(dirname "$MAIN_PLUGIN_FILE")/vendor/naked-cat-plugins/nakedcat-plugin-sdk/floors.php"
+        if [ -f "$FLOORS_FILE" ]; then
+          FLOORS=$(php -r 'define( "ABSPATH", "/" ); $f = require $argv[1]; echo $f["current"]["php"], " ", $f["current"]["wordpress"], " ", $f["current"]["woocommerce"];' "$FLOORS_FILE") || { echo "::error::Unreadable $FLOORS_FILE"; exit 1; }
+          read -r FLOOR_PHP FLOOR_WP FLOOR_WC <<< "$FLOORS"
+          MISMATCH=""
+          [ "$REQUIRES_PHP" = "$FLOOR_PHP" ] || MISMATCH="$MISMATCH Requires PHP is '${REQUIRES_PHP}', the floor is $FLOOR_PHP;"
+          [ "$REQUIRES_AT_LEAST" = "$FLOOR_WP" ] || MISMATCH="$MISMATCH Requires at least is '${REQUIRES_AT_LEAST}', the floor is $FLOOR_WP;"
+          # WooCommerce only for plugins that declare it.
+          if [ -n "$REQUIRES_WC" ] && [ "$REQUIRES_WC" != "$FLOOR_WC" ]; then
+            MISMATCH="$MISMATCH WC requires at least is '${REQUIRES_WC}', the floor is $FLOOR_WC;"
+          fi
+          if [ -n "$MISMATCH" ]; then
+            echo "::error::$MAIN_PLUGIN_FILE does not match the SDK floor ($FLOORS_FILE):$MISMATCH"
+            exit 1
+          fi
+          echo "Headers match the SDK floor: PHP $FLOOR_PHP, WordPress $FLOOR_WP, WooCommerce $FLOOR_WC"
+        fi
+
         echo "Updating products in WooCommerce with version: $VERSION, date: $CURRENT_DATE, requires at least: $REQUIRES_AT_LEAST, requires PHP: ${REQUIRES_PHP:-none}, requires WooCommerce: ${REQUIRES_WC:-none}, tested up to: $TESTED_UP_TO, requires plugins: ${REQUIRES_PLUGINS:-none}"
 
         PAYLOAD=$(jq -n -c \

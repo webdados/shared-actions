@@ -246,7 +246,10 @@ It also writes `_nakedcat_requires_php`, `_nakedcat_requires_wp` and `_nakedcat_
 `Requires PHP`, `Requires at least` and `WC requires at least` header lines. nakedcatplugins.com adds
 them to the update answer as `requires_php`, `requires` and `requires_wc`, so WordPress (and the
 Naked Cat Plugins SDK) does not offer the update to a site below them. A missing line clears its
-value; a value that is not a plain version (`7.4`, `6.9.1`) fails the release.
+value; a value that is not a plain version (`7.4`, `6.9.1`) fails the release. A plugin that bundles
+the Naked Cat Plugins SDK 1.5 or later (`vendor/naked-cat-plugins/nakedcat-plugin-sdk/floors.php`
+next to its main file) must declare exactly the SDK's current floor in those headers (WooCommerce
+only when declared), or the release fails.
 
 
 
